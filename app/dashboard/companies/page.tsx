@@ -1,182 +1,193 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, Globe, Mail, Phone, MapPin, ExternalLink } from "lucide-react"
-import { CompanyForm } from "@/app/views/components/companies/CompanyForm"
-import { Company } from "@/app/models/Company"
+import { Building, Plus, Loader2, Pencil, Trash2 } from "lucide-react"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
+import { CompanyForm } from "@/app/components/forms/CompanyForm"
+
+interface Company {
+    id: string
+    name: string
+    sector: string
+    city: string
+    description: string
+    createdAt: string
+}
 
 export default function CompaniesPage() {
+    const [isLoading, setIsLoading] = useState(true)
     const [companies, setCompanies] = useState<Company[]>([])
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        loadCompanies()
-    }, [])
-
-    const loadCompanies = async () => {
+    const fetchCompanies = async () => {
+        setIsLoading(true)
         try {
             const response = await fetch('/api/companies')
-            if (!response.ok) throw new Error('Failed to fetch companies')
+            if (!response.ok) throw new Error('Erreur lors du chargement des entreprises')
             const data = await response.json()
             setCompanies(data)
         } catch (error) {
-            console.error('Failed to load companies:', error)
+            toast.error("Erreur lors du chargement des entreprises")
+            console.error("Erreur:", error)
         } finally {
-            setLoading(false)
+            setIsLoading(false)
         }
     }
 
-    const handleCreateCompany = async (data: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>) => {
+    useEffect(() => {
+        fetchCompanies()
+    }, [])
+
+    const handleSubmit = async (data: Omit<Company, 'id' | 'createdAt'>) => {
         try {
-            const response = await fetch('/api/companies', {
-                method: 'POST',
+            const response = await fetch('/api/companies' + (editingCompany ? `/${editingCompany.id}` : ''), {
+                method: editingCompany ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             })
-            if (!response.ok) throw new Error('Failed to create company')
-            await loadCompanies()
+
+            if (!response.ok) throw new Error('Erreur lors de l\'opération')
+            await fetchCompanies()
             setIsFormOpen(false)
-        } catch (error) {
-            console.error('Failed to create company:', error)
-        }
-    }
-
-    const handleEditCompany = async (data: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>) => {
-        if (!editingCompany) return
-        try {
-            const response = await fetch(`/api/companies/${editingCompany.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            })
-            if (!response.ok) throw new Error('Failed to update company')
-            await loadCompanies()
             setEditingCompany(null)
-            setIsFormOpen(false)
         } catch (error) {
-            console.error('Failed to update company:', error)
+            toast.error("Une erreur est survenue")
+            console.error(error)
         }
     }
 
-    const handleDeleteCompany = async (id: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Êtes-vous sûr de vouloir supprimer cette entreprise ?')) return
+
         try {
             const response = await fetch(`/api/companies/${id}`, {
                 method: 'DELETE',
             })
-            if (!response.ok) throw new Error('Failed to delete company')
-            await loadCompanies()
+
+            if (!response.ok) throw new Error('Erreur lors de la suppression')
+            await fetchCompanies()
+            toast.success("Entreprise supprimée avec succès")
         } catch (error) {
-            console.error('Failed to delete company:', error)
+            toast.error("Erreur lors de la suppression")
+            console.error(error)
         }
     }
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+        )
+    }
+
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Entreprises</h1>
+        <div className="p-6 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <Building className="w-8 h-8 text-blue-600" />
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Entreprises</h1>
+                        <p className="text-gray-500 mt-1">Gérez vos entreprises partenaires</p>
+                    </div>
+                </div>
                 <Button
                     onClick={() => {
                         setEditingCompany(null)
                         setIsFormOpen(true)
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
                 >
-                    <Building2 className="w-4 h-4 mr-2" />
-                    Nouvelle Entreprise
+                    <Plus className="w-4 h-4 mr-2" />
+                    Ajouter une entreprise
                 </Button>
             </div>
 
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((i) => (
-                        <Card key={i} className="animate-pulse">
-                            <CardHeader className="h-24 bg-gray-100" />
-                            <CardContent className="h-32 bg-gray-50" />
-                        </Card>
-                    ))}
-                </div>
+            {companies.length === 0 ? (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                            <Building className="w-12 h-12 text-gray-400 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                                Aucune entreprise
+                            </h3>
+                            <p className="text-gray-500 text-center mb-4">
+                                Commencez par ajouter votre première entreprise
+                            </p>
+                            <Button
+                                onClick={() => {
+                                    setEditingCompany(null)
+                                    setIsFormOpen(true)
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Ajouter une entreprise
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {companies.map((company) => (
-                        <Card key={company.id} className="hover:shadow-lg transition-shadow">
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle className="text-lg">{company.name}</CardTitle>
-                                        <CardDescription className="text-sm text-gray-500">
-                                            {company.sector} • {company.city}
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex space-x-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setEditingCompany(company)
-                                                setIsFormOpen(true)
-                                            }}
-                                            className="text-blue-600 hover:text-blue-700"
-                                        >
-                                            Modifier
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteCompany(company.id)}
-                                            className="text-red-600 hover:text-red-700"
-                                        >
-                                            Supprimer
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    {company.website && (
-                                        <div className="flex items-center text-sm">
-                                            <Globe className="w-4 h-4 mr-2 text-gray-500" />
-                                            <a
-                                                href={company.website}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 hover:underline flex items-center"
+                    {companies.map((company, index) => (
+                        <motion.div
+                            key={company.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                        >
+                            <Card className="hover:shadow-lg transition-shadow">
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle>{company.name}</CardTitle>
+                                            <CardDescription>{company.sector}</CardDescription>
+                                        </div>
+                                        <div className="flex space-x-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    setEditingCompany(company)
+                                                    setIsFormOpen(true)
+                                                }}
                                             >
-                                                {company.website}
-                                                <ExternalLink className="w-3 h-3 ml-1" />
-                                            </a>
+                                                <Pencil className="w-4 h-4 text-blue-600" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDelete(company.id)}
+                                            >
+                                                <Trash2 className="w-4 h-4 text-red-600" />
+                                            </Button>
                                         </div>
-                                    )}
-                                    {company.email && (
-                                        <div className="flex items-center text-sm">
-                                            <Mail className="w-4 h-4 mr-2 text-gray-500" />
-                                            <span>{company.email}</span>
-                                        </div>
-                                    )}
-                                    {company.phone && (
-                                        <div className="flex items-center text-sm">
-                                            <Phone className="w-4 h-4 mr-2 text-gray-500" />
-                                            <span>{company.phone}</span>
-                                        </div>
-                                    )}
-                                    {company.address && (
-                                        <div className="flex items-center text-sm">
-                                            <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                                            <span>{company.address}</span>
-                                        </div>
-                                    )}
-                                    {company.description && (
-                                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-gray-500">
+                                            <span className="font-medium">Ville:</span> {company.city}
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            <span className="font-medium">Ajoutée le:</span>{" "}
+                                            {new Date(company.createdAt).toLocaleDateString("fr-FR")}
+                                        </p>
+                                        <p className="text-sm text-gray-500 line-clamp-2">
                                             {company.description}
                                         </p>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
                     ))}
                 </div>
             )}
@@ -187,7 +198,7 @@ export default function CompaniesPage() {
                     setIsFormOpen(false)
                     setEditingCompany(null)
                 }}
-                onSubmit={editingCompany ? handleEditCompany : handleCreateCompany}
+                onSubmit={handleSubmit}
                 initialData={editingCompany}
             />
         </div>

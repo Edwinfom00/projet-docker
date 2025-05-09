@@ -1,214 +1,216 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, Users, Clock, Tag } from "lucide-react"
-import { EventForm } from "@/app/views/components/events/EventForm"
-import { Event } from "@/app/models/Event"
-import { format } from "date-fns"
-import { fr } from "date-fns/locale"
+import { Calendar, Plus, Loader2, Pencil, Trash2 } from "lucide-react"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
+import { EventForm } from "@/app/components/forms/EventForm"
+
+interface Event {
+    id: string
+    title: string
+    description: string
+    date: string
+    location: string
+    company: {
+        id: string
+        name: string
+    }
+    createdAt: string
+}
+
+interface Company {
+    id: string
+    name: string
+}
 
 export default function EventsPage() {
+    const [isLoading, setIsLoading] = useState(true)
     const [events, setEvents] = useState<Event[]>([])
+    const [companies, setCompanies] = useState<Company[]>([])
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [editingEvent, setEditingEvent] = useState<Event | null>(null)
-    const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        loadEvents()
-    }, [])
-
-    const loadEvents = async () => {
+    const fetchEvents = async () => {
+        setIsLoading(true)
         try {
             const response = await fetch('/api/events')
-            if (!response.ok) throw new Error('Failed to fetch events')
+            if (!response.ok) throw new Error('Erreur lors du chargement des événements')
             const data = await response.json()
             setEvents(data)
         } catch (error) {
-            console.error('Failed to load events:', error)
+            toast.error("Erreur lors du chargement des événements")
+            console.error("Erreur:", error)
         } finally {
-            setLoading(false)
+            setIsLoading(false)
         }
     }
 
-    const handleCreateEvent = async (data: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const fetchCompanies = async () => {
         try {
-            const response = await fetch('/api/events', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            })
-            if (!response.ok) throw new Error('Failed to create event')
-            await loadEvents()
-            setIsFormOpen(false)
+            const response = await fetch('/api/companies')
+            if (!response.ok) throw new Error('Erreur lors du chargement des entreprises')
+            const data = await response.json()
+            setCompanies(data)
         } catch (error) {
-            console.error('Failed to create event:', error)
+            toast.error("Erreur lors du chargement des entreprises")
+            console.error("Erreur:", error)
         }
     }
 
-    const handleEditEvent = async (data: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
-        if (!editingEvent) return
+    useEffect(() => {
+        fetchEvents()
+        fetchCompanies()
+    }, [])
+
+    const handleSubmit = async (data: Omit<Event, 'id' | 'createdAt' | 'company'> & { companyId: string }) => {
         try {
-            const response = await fetch(`/api/events/${editingEvent.id}`, {
-                method: 'PUT',
+            const response = await fetch('/api/events' + (editingEvent ? `/${editingEvent.id}` : ''), {
+                method: editingEvent ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             })
-            if (!response.ok) throw new Error('Failed to update event')
-            await loadEvents()
+
+            if (!response.ok) throw new Error('Erreur lors de l\'opération')
+            await fetchEvents()
+            setIsFormOpen(false)
             setEditingEvent(null)
-            setIsFormOpen(false)
         } catch (error) {
-            console.error('Failed to update event:', error)
+            toast.error("Une erreur est survenue")
+            console.error(error)
         }
     }
 
-    const handleDeleteEvent = async (id: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) return
+
         try {
             const response = await fetch(`/api/events/${id}`, {
                 method: 'DELETE',
             })
-            if (!response.ok) throw new Error('Failed to delete event')
-            await loadEvents()
+
+            if (!response.ok) throw new Error('Erreur lors de la suppression')
+            await fetchEvents()
+            toast.success("Événement supprimé avec succès")
         } catch (error) {
-            console.error('Failed to delete event:', error)
-        }
-    }
-    const isValidDate = (date: any) => {
-        const parsed = new Date(date);
-        return !isNaN(parsed.getTime());
-    };
-
-    const getStatusColor = (status: Event['status']) => {
-        switch (status) {
-            case 'UPCOMING':
-                return 'text-blue-600 bg-blue-50'
-            case 'ONGOING':
-                return 'text-green-600 bg-green-50'
-            case 'COMPLETED':
-                return 'text-gray-600 bg-gray-50'
-            case 'CANCELLED':
-                return 'text-red-600 bg-red-50'
-            default:
-                return 'text-gray-600 bg-gray-50'
+            toast.error("Erreur lors de la suppression")
+            console.error(error)
         }
     }
 
-    const getTypeLabel = (type: Event['type']) => {
-        switch (type) {
-            case 'CONFERENCE':
-                return 'Conférence'
-            case 'WORKSHOP':
-                return 'Atelier'
-            case 'NETWORKING':
-                return 'Networking'
-            case 'OTHER':
-                return 'Autre'
-            default:
-                return type
-        }
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+        )
     }
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Événements</h1>
+        <div className="p-6 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <Calendar className="w-8 h-8 text-blue-600" />
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Événements</h1>
+                        <p className="text-gray-500 mt-1">Gérez vos événements</p>
+                    </div>
+                </div>
                 <Button
                     onClick={() => {
                         setEditingEvent(null)
                         setIsFormOpen(true)
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
                 >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Nouvel Événement
+                    <Plus className="w-4 h-4 mr-2" />
+                    Ajouter un événement
                 </Button>
             </div>
 
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((i) => (
-                        <Card key={i} className="animate-pulse">
-                            <CardHeader className="h-24 bg-gray-100" />
-                            <CardContent className="h-32 bg-gray-50" />
-                        </Card>
-                    ))}
-                </div>
+            {events.length === 0 ? (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                            <Calendar className="w-12 h-12 text-gray-400 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                                Aucun événement
+                            </h3>
+                            <p className="text-gray-500 text-center mb-4">
+                                Commencez par ajouter votre premier événement
+                            </p>
+                            <Button
+                                onClick={() => {
+                                    setEditingEvent(null)
+                                    setIsFormOpen(true)
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Ajouter un événement
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {events.map((event) => (
-                        <Card key={event.id} className="hover:shadow-lg transition-shadow">
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle className="text-lg">{event.title}</CardTitle>
-                                        <div className="flex items-center space-x-2 mt-1">
-                                            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(event.status)}`}>
-                                                {event.status}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {getTypeLabel(event.type)}
-                                            </span>
+                    {events.map((event, index) => (
+                        <motion.div
+                            key={event.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                        >
+                            <Card className="hover:shadow-lg transition-shadow">
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle>{event.title}</CardTitle>
+                                            <CardDescription>{event.company.name}</CardDescription>
+                                        </div>
+                                        <div className="flex space-x-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    setEditingEvent(event)
+                                                    setIsFormOpen(true)
+                                                }}
+                                            >
+                                                <Pencil className="w-4 h-4 text-blue-600" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDelete(event.id)}
+                                            >
+                                                <Trash2 className="w-4 h-4 text-red-600" />
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex space-x-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setEditingEvent(event)
-                                                setIsFormOpen(true)
-                                            }}
-                                            className="text-blue-600 hover:text-blue-700"
-                                        >
-                                            Modifier
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteEvent(event.id)}
-                                            className="text-red-600 hover:text-red-700"
-                                        >
-                                            Supprimer
-                                        </Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-gray-500">
+                                            <span className="font-medium">Date:</span>{" "}
+                                            {new Date(event.date).toLocaleDateString("fr-FR")}
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            <span className="font-medium">Lieu:</span> {event.location}
+                                        </p>
+                                        <p className="text-sm text-gray-500 line-clamp-2">
+                                            {event.description}
+                                        </p>
                                     </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    <div className="flex items-center text-sm">
-                                        <Calendar className="w-4 h-4 mr-2 text-gray-500" />
-                                        <span>
-                                            {isValidDate(event.startDate) && isValidDate(event.endDate)
-                                                ? `${format(new Date(event.startDate), "d MMMM yyyy  HH:mm", { locale: fr })} - ${format(new Date(event.endDate), "d MMMM yyyy  HH:mm", { locale: fr })}`
-                                                : "Date invalide"}
-
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center text-sm">
-                                        <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                                        <span>{event.location}</span>
-                                    </div>
-                                    {event.capacity && (
-                                        <div className="flex items-center text-sm">
-                                            <Users className="w-4 h-4 mr-2 text-gray-500" />
-                                            <span>Capacité: {event.capacity} personnes</span>
-                                        </div>
-                                    )}
-                                    {event.price && (
-                                        <div className="flex items-center text-sm">
-                                            <Tag className="w-4 h-4 mr-2 text-gray-500" />
-                                            <span>{event.price} FCFA</span>
-                                        </div>
-                                    )}
-                                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                                        {event.description}
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
                     ))}
                 </div>
             )}
@@ -219,8 +221,9 @@ export default function EventsPage() {
                     setIsFormOpen(false)
                     setEditingEvent(null)
                 }}
-                onSubmit={editingEvent ? handleEditEvent : handleCreateEvent}
+                onSubmit={handleSubmit}
                 initialData={editingEvent}
+                companies={companies}
             />
         </div>
     )

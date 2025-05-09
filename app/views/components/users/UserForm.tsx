@@ -5,6 +5,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 import {
     Form,
@@ -26,7 +27,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, UserPlus, UserCog } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 const userFormSchema = z.object({
     name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
@@ -97,13 +99,34 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[525px] bg-white dark:bg-gray-900">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {initialData ? "Modifier l'utilisateur" : "Créer un nouvel utilisateur"}
+                    <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        {initialData ? (
+                            <>
+                                <UserCog className="w-6 h-6" />
+                                Modifier l'utilisateur
+                            </>
+                        ) : (
+                            <>
+                                <UserPlus className="w-6 h-6" />
+                                Créer un nouvel utilisateur
+                            </>
+                        )}
                     </DialogTitle>
+                    <DialogDescription className="text-gray-500 dark:text-gray-400">
+                        {initialData
+                            ? "Modifiez les informations de l'utilisateur ci-dessous."
+                            : "Remplissez le formulaire pour créer un nouvel utilisateur."
+                        }
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="grid grid-cols-2 gap-4"
+                        >
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -112,7 +135,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                         <FormLabel className="text-gray-700 dark:text-gray-300">Nom</FormLabel>
                                         <FormControl>
                                             <Input
-                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500"
+                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors"
                                                 placeholder="Entrez le nom"
                                                 {...field}
                                             />
@@ -129,7 +152,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                         <FormLabel className="text-gray-700 dark:text-gray-300">Email</FormLabel>
                                         <FormControl>
                                             <Input
-                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500"
+                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors"
                                                 placeholder="Entrez l'email"
                                                 type="email"
                                                 {...field}
@@ -139,30 +162,44 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                     </FormItem>
                                 )}
                             />
-                        </div>
+                        </motion.div>
 
-                        {!initialData && (
-                            <FormField
-                                control={form.control}
-                                name="password"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-gray-700 dark:text-gray-300">Mot de passe</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500"
-                                                type="password"
-                                                placeholder="Entrez le mot de passe"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage className="text-red-500" />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
+                        <AnimatePresence>
+                            {!initialData && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-700 dark:text-gray-300">Mot de passe</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors"
+                                                        type="password"
+                                                        placeholder="Entrez le mot de passe"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage className="text-red-500" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 }}
+                            className="grid grid-cols-2 gap-4"
+                        >
                             <FormField
                                 control={form.control}
                                 name="phone"
@@ -171,7 +208,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                         <FormLabel className="text-gray-700 dark:text-gray-300">Téléphone</FormLabel>
                                         <FormControl>
                                             <Input
-                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500"
+                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors"
                                                 placeholder="Entrez le numéro"
                                                 {...field}
                                             />
@@ -188,7 +225,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                         <FormLabel className="text-gray-700 dark:text-gray-300">Adresse</FormLabel>
                                         <FormControl>
                                             <Input
-                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500"
+                                                className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors"
                                                 placeholder="Entrez l'adresse"
                                                 {...field}
                                             />
@@ -197,9 +234,14 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                     </FormItem>
                                 )}
                             />
-                        </div>
+                        </motion.div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.2 }}
+                            className="grid grid-cols-2 gap-4"
+                        >
                             <FormField
                                 control={form.control}
                                 name="role"
@@ -208,7 +250,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                         <FormLabel className="text-gray-700 dark:text-gray-300">Rôle</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl>
-                                                <SelectTrigger className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500">
+                                                <SelectTrigger className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors">
                                                     <SelectValue placeholder="Sélectionnez un rôle" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -230,7 +272,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                         <FormLabel className="text-gray-700 dark:text-gray-300">Statut</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl>
-                                                <SelectTrigger className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500">
+                                                <SelectTrigger className="shadow-sm border-gray-300 dark:border-gray-700 focus:ring-blue-500 transition-colors">
                                                     <SelectValue placeholder="Sélectionnez un statut" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -244,21 +286,26 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                     </FormItem>
                                 )}
                             />
-                        </div>
+                        </motion.div>
 
-                        <div className="flex justify-end space-x-3">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.3 }}
+                            className="flex justify-end space-x-3"
+                        >
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={onClose}
-                                className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                                className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                                 disabled={isSubmitting}
                             >
                                 Annuler
                             </Button>
                             <Button
                                 type="submit"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
@@ -270,7 +317,7 @@ export function UserForm({ open, onClose, onSubmit, initialData }: UserFormProps
                                     initialData ? "Mettre à jour" : "Créer"
                                 )}
                             </Button>
-                        </div>
+                        </motion.div>
                     </form>
                 </Form>
             </DialogContent>
